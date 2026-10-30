@@ -296,7 +296,8 @@ function unlockAudio() {
   var done = function () { audio.pause(); audio.currentTime = 0; audio.muted = false; };
   if (p && p.then) p.then(done).catch(function () { audio.muted = false; }); else done();
 }
-$('startBtn').addEventListener('click', unlockAudio);
+// a click anywhere on the page (the TV browser's pointer) turns the sound on
+document.addEventListener('click', unlockAudio);
 document.addEventListener('keydown', function (e) {
   if ($('start').classList.contains('on') && (e.key === 'Enter' || e.keyCode === 13)) unlockAudio();
 });
@@ -447,7 +448,6 @@ setInterval(showPhoto, 30000);
 function hideToolbar() { try { window.scrollTo(0, 60); } catch (e) {} }
 setTimeout(hideToolbar, 1500);
 setInterval(hideToolbar, 60000);
-setInterval(function () { var n = new Date(); if (n.getHours() === 3 && n.getMinutes() === 30) location.reload(); }, 60000);
 </script>
 </body>
 </html>
