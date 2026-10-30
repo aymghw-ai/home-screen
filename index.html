@@ -288,7 +288,10 @@ function checkAdhan(now) {
   });
 }
 
+var audioUnlocked = false;
 function unlockAudio() {
+  if (audioUnlocked) { $('start').classList.remove('on'); return; }
+  audioUnlocked = true;
   $('start').classList.remove('on');
   try { var el = document.documentElement; (el.requestFullscreen || el.webkitRequestFullscreen || function () {}).call(el); } catch (e) {}
   audio.muted = true;
