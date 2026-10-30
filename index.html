@@ -51,7 +51,7 @@
   .clock .ap { font-size: 2.2vw; font-weight: 500; padding-bottom: 1.2vw; color: var(--soft); order: -1; }
 
   /* bottom info row */
-  .info { position: absolute; right: 4vw; left: 4vw; bottom: 6.4vw; display: flex; align-items: flex-end; gap: 0; }
+  .info { position: absolute; right: 4vw; left: 4vw; bottom: 3.6vw; display: flex; align-items: flex-end; gap: 0; }
   .blk { padding: 0 2.6vw; border-left: 1px solid var(--line); }
   .blk:first-child { padding-right: 0; }
   .blk:last-child { border-left: 0; }
@@ -68,14 +68,13 @@
   .times div.next .n, .times div.next .v { color: var(--accent); }
   .times div.past { opacity: .5; }
 
-  /* reminders ticker */
-  .ticker { position: absolute; left: 0; right: 0; bottom: 1.9vw; height: 2.6vw; overflow: hidden; direction: ltr;
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 6%, #000 94%, transparent 100%);
-            mask-image: linear-gradient(to right, transparent 0, #000 6%, #000 94%, transparent 100%); }
-  .ticker .track { position: absolute; top: 0; bottom: 0; left: 0; display: flex; align-items: center; white-space: nowrap; will-change: transform; }
-  .ticker .item { direction: rtl; font-size: 1.55vw; font-weight: 400; color: var(--soft); padding: 0 2vw; }
-  .ticker .dot { color: var(--accent); font-size: .9vw; opacity: .8; }
-  @keyframes tick { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+  /* reminder card: fades in, stays a while, fades out */
+  .tip { position: absolute; left: 4vw; bottom: 13vw; max-width: 34vw; padding: 1.4vw 1.8vw; border-radius: 1.2vw;
+    background: rgba(10,14,26,.55); border: 1px solid rgba(255,255,255,.18); box-shadow: 0 .8vw 2.4vw rgba(0,0,0,.3);
+    opacity: 0; transform: translateY(1vw); transition: opacity 2.5s ease, transform 2.5s ease; text-shadow: none; }
+  .tip.show { opacity: 1; transform: translateY(0); }
+  .tip .lbl { font-size: 1.05vw; color: var(--accent); font-weight: 600; margin-bottom: .5vw; }
+  .tip .txt { font-size: 1.75vw; line-height: 1.6; font-weight: 500; }
 
   .credit { position: absolute; left: 4vw; bottom: .5vw; font-size: .7vw; color: rgba(255,255,255,.45); direction: ltr; text-shadow: none; }
 
@@ -126,7 +125,7 @@
     </div>
   </div>
 
-  <div class="ticker"><div class="track" id="track"></div></div>
+  <div class="tip" id="tip"><div class="lbl">تذكير</div><div class="txt" id="tipText"></div></div>
   <div class="credit" id="credit"></div>
 </div>
 
@@ -153,7 +152,9 @@ var CFG = {
   lat: parseFloat(params.get('lat') || '16.8892'),
   lon: parseFloat(params.get('lon') || '42.5511'),
   method: params.get('method') || '4',   // 4 = Umm Al-Qura, Makkah
-  photoMinutes: 15                        // how often the background photo changes
+  photoMinutes: 15,                       // how often the background photo changes
+  tipEveryMinutes: 15,                    // a reminder appears this often…
+  tipShowSeconds: 60                      // …and stays on screen this long
 };
 
 var PHRASES = [
@@ -375,14 +376,14 @@ function loadRamadan() {
     .catch(function () {});
 }
 
-// ===================== ticker =====================
-function buildTicker() {
-  var items = PHRASES.slice().reverse().map(function (p) {
-    return '<span class="item">' + p + '</span><span class="dot">◆</span>';
-  }).join('');
-  var track = $('track');
-  track.innerHTML = items + items;
-  track.style.animation = 'tick ' + Math.round(track.scrollWidth / 2 / 70) + 's linear infinite';
+// ===================== reminder card =====================
+var tipIndex = Math.floor(Math.random() * PHRASES.length);
+function showTip() {
+  if ($('adhanOverlay').classList.contains('on')) return;
+  $('tipText').textContent = PHRASES[tipIndex];
+  tipIndex = (tipIndex + 1) % PHRASES.length;
+  $('tip').classList.add('show');
+  setTimeout(function () { $('tip').classList.remove('show'); }, CFG.tipShowSeconds * 1000);
 }
 
 // ===================== background photos =====================
@@ -429,8 +430,8 @@ if (window.tizen) {
 
 // ===================== start =====================
 renderDate();
-buildTicker();
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(buildTicker);
+setTimeout(showTip, 20000);
+setInterval(showTip, CFG.tipEveryMinutes * 60 * 1000);
 tick();
 showPhoto(true);
 loadPrayers();
