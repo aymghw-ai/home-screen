@@ -146,7 +146,7 @@
   <button id="startBtn" autofocus>تشغيل</button>
 </div>
 
-<audio id="adhan" preload="auto" src="https://cdn.aladhan.com/audio/adhans/a1.mp3"></audio>
+<audio id="adhan" preload="auto"></audio>
 
 <script src="photos.js"></script>
 <script>
@@ -266,9 +266,20 @@ function nextPrayer(now) {
 
 // ===================== adhan =====================
 var audio = $('adhan');
-var played = store('adhanPlayed') || {};
+var ADHAN_URL = 'https://cdn.aladhan.com/audio/adhans/a1.mp3';
+var TAB_ID = Math.random().toString(36).slice(2);
+
+// Re-buffer the adhan a few minutes before each prayer, so it is already
+// downloaded when it starts instead of stuttering while it streams.
+audio.src = ADHAN_URL;
+var lastPrebuffer = '';
+function prebufferAdhan(id) {
+  if (lastPrebuffer === id || !audio.paused) return;
+  lastPrebuffer = id;
+  try { audio.preload = 'auto'; audio.load(); } catch (e) {} }
 
 function startAdhan(k) {
+  if (!audio.paused) return;
   $('adhanName').textContent = 'أذان ' + prayerName(k, new Date());
   $('adhanOverlay').classList.add('on');
   try { audio.currentTime = 0; var p = audio.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
@@ -281,10 +292,17 @@ function checkAdhan(now) {
   ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].forEach(function (k) {
     var id = today.key + ':' + k;
     var diff = now - at(today.timings[k], now);
-    if (diff >= 0 && diff < 60000 && !played[id]) {
-      played = {}; played[id] = 1; store('adhanPlayed', played);
-      startAdhan(k);
-    }
+    if (diff >= -180000 && diff < -170000) prebufferAdhan(id);
+    if (diff < 0 || diff >= 60000) return;
+    // the page may be open in more than one browser tab: only one of them plays,
+    // otherwise the adhan sounds doubled and echoing
+    var claim = store('adhanClaim');
+    if (claim && claim.id === id) return;
+    store('adhanClaim', { id: id, tab: TAB_ID });
+    setTimeout(function () {
+      var c = store('adhanClaim');
+      if (c && c.id === id && c.tab === TAB_ID) startAdhan(k);
+    }, 400 + Math.random() * 400);
   });
 }
 
@@ -408,6 +426,7 @@ function phaseNow(now) {
 
 var front = $('photoA'), back = $('photoB'), photoKey = '';
 function showPhoto(force) {
+  if ($('adhanOverlay').classList.contains('on')) return; // keep the TV free for smooth adhan audio
   var now = new Date(), phase = phaseNow(now);
   var slot = Math.floor((now.getHours() * 60 + now.getMinutes()) / CFG.photoMinutes);
   var key = phase + ':' + slot;
